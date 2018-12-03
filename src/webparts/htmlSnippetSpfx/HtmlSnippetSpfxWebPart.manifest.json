@@ -19,7 +19,8 @@
     "properties": {
       "description": "html-snippet-spfx",
       "listName": "",
-      "item": ""
+      "item": "",
+      "rawHtml": ""
     }
   }]
 }

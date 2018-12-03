@@ -5,6 +5,7 @@ import { IDropdownOption } from 'office-ui-fabric-react/lib/components/Dropdown'
 import { PropertyPaneAsyncDropdown } from '../../controls/PropertyPaneAsyncDropdown/PropertyPaneAsyncDropdown';
 import { update, get } from '@microsoft/sp-lodash-subset';
 import pnp, { List, Item, ListEnsureResult, ItemAddResult, FieldAddResult, Web } from "sp-pnp-js"
+import { SPComponentLoader } from '@microsoft/sp-loader';
 
 import {
   BaseClientSideWebPart,
@@ -20,7 +21,9 @@ export interface IHtmlSnippetSpfxWebPartProps {
   description: string;
   listName: string;
   item: string;
+  rawHtml: string;
 }
+
 
 export default class HtmlSnippetSpfxWebPart extends BaseClientSideWebPart<IHtmlSnippetSpfxWebPartProps> {
 
@@ -62,7 +65,7 @@ export default class HtmlSnippetSpfxWebPart extends BaseClientSideWebPart<IHtmlS
                   let parts = path.split("/");
                    let fileName = parts[parts.length - 1];
                   options.push({
-                      key: items[_i]["ID"],
+                      key: path,
                       text: fileName
                     });
                 }
@@ -128,16 +131,30 @@ export default class HtmlSnippetSpfxWebPart extends BaseClientSideWebPart<IHtmlS
   }
 
   public render(): void {
-    const element: React.ReactElement<IHtmlSnippetSpfxProps > = React.createElement(
-      HtmlSnippetSpfx,
-      {
-        description: this.properties.description,
-        listName: this.properties.listName,
-        item: this.properties.item
-      }
-    );
 
-    ReactDom.render(element, this.domElement);
+    let web = new Web(this.context.pageContext.web.absoluteUrl);
+    web.getFileByServerRelativeUrl(this.properties.item).getText().then((text: string) => {
+       
+        this.properties.rawHtml = text;
+        
+        const element: React.ReactElement<IHtmlSnippetSpfxProps > = React.createElement(
+          HtmlSnippetSpfx,
+          {
+            description: this.properties.description,
+            listName: this.properties.listName,
+            item: this.properties.item,
+            context: this.context,
+            rawHtml: this.properties.rawHtml
+          }
+        );
+    
+        this.domElement.innerHTML = this.properties.rawHtml;
+        this.executeScript(this.domElement);
+
+        ReactDom.render(element, this.domElement);
+    });
+
+  
   }
 
   protected onDispose(): void {
@@ -187,6 +204,99 @@ export default class HtmlSnippetSpfxWebPart extends BaseClientSideWebPart<IHtmlS
   }
 
 
-  
+  private nodeName(elem, name) {
+    return elem.nodeName && elem.nodeName.toUpperCase() === name.toUpperCase();
+}
+
+  private evalScript(elem) {
+    const data = (elem.text || elem.textContent || elem.innerHTML || "");
+    const headTag = document.getElementsByTagName("head")[0] || document.documentElement;
+    const scriptTag = document.createElement("script");
+
+    scriptTag.type = "text/javascript";
+    if (elem.src && elem.src.length > 0) {
+        return;
+    }
+    if (elem.onload && elem.onload.length > 0) {
+        scriptTag.onload = elem.onload;
+    }
+
+    try {
+        // doesn't work on ie...
+        scriptTag.appendChild(document.createTextNode(data));
+    } catch (e) {
+        // IE has funky script nodes
+        scriptTag.text = data;
+    }
+
+    headTag.insertBefore(scriptTag, headTag.firstChild);
+    headTag.removeChild(scriptTag);
+}
+
+
+
+private async executeScript(element: HTMLElement) {
+
+
+  if (this.context.pageContext && !window["_spPageContextInfo"]) {
+    window["_spPageContextInfo"] = this.context.pageContext.legacyPageContext;
+}
+
+(<any>window).ScriptGlobal = {};
+
+      // main section of function
+const scripts = [];
+const children_nodes = element.childNodes;
+
+for (let i = 0; children_nodes[i]; i++) {
+  const child: any = children_nodes[i];
+  if (this.nodeName(child, "script") &&
+      (!child.type || child.type.toLowerCase() === "text/javascript")) {
+      scripts.push(child);
+  }
+}
+
+const urls = [];
+const onLoads = [];
+for (let i = 0; scripts[i]; i++) {
+    const scriptTag = scripts[i];
+    if (scriptTag.src && scriptTag.src.length > 0) {
+        urls.push(scriptTag.src);
+    }
+    if (scriptTag.onload && scriptTag.onload.length > 0) {
+        onLoads.push(scriptTag.onload);
+    }
+}
+
+let oldamd = null;
+if (window["define"] && window["define"].amd) {
+    oldamd = window["define"].amd;
+    window["define"].amd = null;
+}
+
+for (let i = 0; i < urls.length; i++) {
+  try {
+      await SPComponentLoader.loadScript(urls[i], { globalExportsName: "ScriptGlobal" });
+  } catch (error) {
+      console.error(error);
+  }
+}
+
+
+if (oldamd) {
+  window["define"].amd = oldamd;
+}
+
+for (let i = 0; scripts[i]; i++) {
+  const scriptTag = scripts[i];
+  if (scriptTag.parentNode) { scriptTag.parentNode.removeChild(scriptTag); }
+  this.evalScript(scripts[i]);
+}
+// execute any onload people have added
+for (let i = 0; onLoads[i]; i++) {
+  onLoads[i]();
+}
+
+}
 
 }

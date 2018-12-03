@@ -11,7 +11,9 @@
       ]
     }
   },
-  "externals": {},
+  "externals": { 
+ 
+  },
   "localizedResources": {
     "HtmlSnippetSpfxWebPartStrings": "lib/webparts/htmlSnippetSpfx/loc/{locale}.js"
   }
