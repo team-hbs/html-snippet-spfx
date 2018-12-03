@@ -3,8 +3,8 @@ import * as ReactDom from 'react-dom';
 import { Version } from '@microsoft/sp-core-library';
 import { IDropdownOption } from 'office-ui-fabric-react/lib/components/Dropdown';
 import { PropertyPaneAsyncDropdown } from '../../controls/PropertyPaneAsyncDropdown/PropertyPaneAsyncDropdown';
-
 import { update, get } from '@microsoft/sp-lodash-subset';
+import pnp, { List, Item, ListEnsureResult, ItemAddResult, FieldAddResult, Web } from "sp-pnp-js"
 
 import {
   BaseClientSideWebPart,
@@ -27,19 +27,63 @@ export default class HtmlSnippetSpfxWebPart extends BaseClientSideWebPart<IHtmlS
   private itemsDropDown: PropertyPaneAsyncDropdown;
 
   private loadLists(): Promise<IDropdownOption[]> {
-    return new Promise<IDropdownOption[]>((resolve: (options: IDropdownOption[]) => void, reject: (error: any) => void) => {
-      setTimeout(() => {
-        resolve([{
-          key: 'sharedDocuments',
-          text: 'Shared Documents'
-        },
-          {
-            key: 'myDocuments',
-            text: 'My Documents'
-          }]);
-      }, 2000);
+     return this.getLists();
+  }
+
+  private getLists() : Promise<IDropdownOption[]> { 
+    console.log("getLists()");
+    return new Promise<IDropdownOption[]>((resolve: (items: IDropdownOption[]) => void, reject: (err: string) => void): void => {
+           let web = new Web(this.context.pageContext.web.absoluteUrl);
+           web.lists.get().then((lists:List[]) => {
+               let options:IDropdownOption[] = [];
+               for (let _i = 0;_i < lists.length; _i++)
+               {
+                 //TODO: filter by document library
+                 options.push({
+                     key: lists[_i]["Title"],
+                     text: lists[_i]["Title"]
+                   });
+               }
+               console.log(options);
+               resolve(options);
+           });
+     });
+    }
+
+  private getDocuments() : Promise<IDropdownOption[]> { 
+    return new Promise<IDropdownOption[]>((resolve: (items: IDropdownOption[]) => void, reject: (err: string) => void): void => {
+           let web = new Web(this.context.pageContext.web.absoluteUrl);
+           web.lists.getByTitle(this.properties.listName).items.select(
+            "ID","FileRef").get().then((items) => {
+                let options:IDropdownOption[] = [];
+                for (let _i = 0;_i < items.length; _i++)
+                {
+                  let path = items[_i]["FileRef"];
+                  let parts = path.split("/");
+                   let fileName = parts[parts.length - 1];
+                  options.push({
+                      key: items[_i]["ID"],
+                      text: fileName
+                    });
+                }
+                console.log(options);
+                resolve(options);
+            });
+     });
+    }
+
+  private getDocumentsOld() : Promise<Item[]> { 
+    return new Promise<Item[]>((resolve: (items: Item[]) => void, reject: (err: string) => void): void => {
+           let web = new Web(this.context.pageContext.web.absoluteUrl);
+           web.lists.getById(this.properties.listName).items.select(
+             "ID",
+            "Title"
+            ).get().then((items) => {
+                resolve(items);
+            });
     });
   }
+  
 
   private onListChange(propertyPath: string, newValue: any): void {
     const oldValue: any = get(this.properties, propertyPath);
@@ -56,7 +100,13 @@ export default class HtmlSnippetSpfxWebPart extends BaseClientSideWebPart<IHtmlS
     // allow to load items
     this.itemsDropDown.properties.disabled = false;
     // load items and re-render items dropdown
-    this.itemsDropDown.render();
+  
+
+    this.getDocuments().then((items) => {
+      //TODO
+          this.itemsDropDown.render();
+    });
+    
   }
 
   private loadItems(): Promise<IDropdownOption[]> {
@@ -66,35 +116,8 @@ export default class HtmlSnippetSpfxWebPart extends BaseClientSideWebPart<IHtmlS
     }
 
     const wp: HtmlSnippetSpfxWebPart = this;
-
-    return new Promise<IDropdownOption[]>((resolve: (options: IDropdownOption[]) => void, reject: (error: any) => void) => {
-      setTimeout(() => {
-        const items = {
-          sharedDocuments: [
-            {
-              key: 'spfx_presentation.pptx',
-              text: 'SPFx for the masses'
-            },
-            {
-              key: 'hello-world.spapp',
-              text: 'hello-world.spapp'
-            }
-          ],
-          myDocuments: [
-            {
-              key: 'isaiah_cv.docx',
-              text: 'Isaiah CV'
-            },
-            {
-              key: 'isaiah_expenses.xlsx',
-              text: 'Isaiah Expenses'
-            }
-          ]
-        };
-        resolve(items[wp.properties.listName]);
-      }, 2000);
-    });
-  }
+      return this.getDocuments();
+    }
 
   private onListItemChange(propertyPath: string, newValue: any): void {
     const oldValue: any = get(this.properties, propertyPath);

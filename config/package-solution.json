@@ -4,7 +4,8 @@
     "name": "html-snippet-spfx-client-side-solution",
     "id": "30999bec-9954-4dfb-81f6-9583a0eee546",
     "version": "1.0.0.0",
-    "includeClientSideAssets": true
+    "includeClientSideAssets": true,
+    "skipFeatureDeployment": true
   },
   "paths": {
     "zippedPackage": "solution/html-snippet-spfx.sppkg"
