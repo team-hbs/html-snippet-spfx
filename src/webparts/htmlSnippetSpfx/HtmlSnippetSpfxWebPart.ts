@@ -29,34 +29,14 @@ export default class HtmlSnippetSpfxWebPart extends BaseClientSideWebPart<IHtmlS
 
   private itemsDropDown: PropertyPaneAsyncDropdown;
 
-  private loadLists(): Promise<IDropdownOption[]> {
-     return this.getLists();
+  private loadDocuments(): Promise<IDropdownOption[]> {
+    return this.getDocuments();
   }
-
-  private getLists() : Promise<IDropdownOption[]> { 
-    console.log("getLists()");
-    return new Promise<IDropdownOption[]>((resolve: (items: IDropdownOption[]) => void, reject: (err: string) => void): void => {
-           let web = new Web(this.context.pageContext.web.absoluteUrl);
-           web.lists.get().then((lists:List[]) => {
-               let options:IDropdownOption[] = [];
-               for (let _i = 0;_i < lists.length; _i++)
-               {
-                 //TODO: filter by document library
-                 options.push({
-                     key: lists[_i]["Title"],
-                     text: lists[_i]["Title"]
-                   });
-               }
-               console.log(options);
-               resolve(options);
-           });
-     });
-    }
 
   private getDocuments() : Promise<IDropdownOption[]> { 
     return new Promise<IDropdownOption[]>((resolve: (items: IDropdownOption[]) => void, reject: (err: string) => void): void => {
            let web = new Web(this.context.pageContext.web.absoluteUrl);
-           web.lists.getByTitle(this.properties.listName).items.select(
+           web.lists.getByTitle("Scriptsx").items.select(
             "ID","FileRef").get().then((items) => {
                 let options:IDropdownOption[] = [];
                 for (let _i = 0;_i < items.length; _i++)
@@ -71,22 +51,12 @@ export default class HtmlSnippetSpfxWebPart extends BaseClientSideWebPart<IHtmlS
                 }
                 console.log(options);
                 resolve(options);
-            });
+            }).catch(e => { 
+              console.error(e); 
+              console.log("LIST DOES NOT EXIST");
+            });;
      });
-    }
-
-  private getDocumentsOld() : Promise<Item[]> { 
-    return new Promise<Item[]>((resolve: (items: Item[]) => void, reject: (err: string) => void): void => {
-           let web = new Web(this.context.pageContext.web.absoluteUrl);
-           web.lists.getById(this.properties.listName).items.select(
-             "ID",
-            "Title"
-            ).get().then((items) => {
-                resolve(items);
-            });
-    });
   }
-  
 
   private onListChange(propertyPath: string, newValue: any): void {
     const oldValue: any = get(this.properties, propertyPath);
@@ -103,13 +73,14 @@ export default class HtmlSnippetSpfxWebPart extends BaseClientSideWebPart<IHtmlS
     // allow to load items
     this.itemsDropDown.properties.disabled = false;
     // load items and re-render items dropdown
-  
-
     this.getDocuments().then((items) => {
       //TODO
           this.itemsDropDown.render();
     });
-    
+  }
+
+  private onDocumentChange(propertyPath: string, newValue: any): void {
+    this.render();
   }
 
   private loadItems(): Promise<IDropdownOption[]> {
@@ -117,10 +88,9 @@ export default class HtmlSnippetSpfxWebPart extends BaseClientSideWebPart<IHtmlS
       // resolve to empty options since no list has been selected
       return Promise.resolve();
     }
-
     const wp: HtmlSnippetSpfxWebPart = this;
-      return this.getDocuments();
-    }
+    return this.getDocuments();
+  }
 
   private onListItemChange(propertyPath: string, newValue: any): void {
     const oldValue: any = get(this.properties, propertyPath);
@@ -131,30 +101,23 @@ export default class HtmlSnippetSpfxWebPart extends BaseClientSideWebPart<IHtmlS
   }
 
   public render(): void {
-
     let web = new Web(this.context.pageContext.web.absoluteUrl);
     web.getFileByServerRelativeUrl(this.properties.item).getText().then((text: string) => {
-       
         this.properties.rawHtml = text;
-        
         const element: React.ReactElement<IHtmlSnippetSpfxProps > = React.createElement(
           HtmlSnippetSpfx,
           {
             description: this.properties.description,
-            listName: this.properties.listName,
+            listName: "Scripts",
             item: this.properties.item,
             context: this.context,
             rawHtml: this.properties.rawHtml
           }
         );
-    
         this.domElement.innerHTML = this.properties.rawHtml;
         this.executeScript(this.domElement);
-
         ReactDom.render(element, this.domElement);
     });
-
-  
   }
 
   protected onDispose(): void {
@@ -165,19 +128,9 @@ export default class HtmlSnippetSpfxWebPart extends BaseClientSideWebPart<IHtmlS
     return Version.parse('1.0');
   }
 
-
-
   protected getPropertyPaneConfiguration(): IPropertyPaneConfiguration {
     // reference to item dropdown needed later after selecting a list
-    this.itemsDropDown = new PropertyPaneAsyncDropdown('item', {
-      label: strings.ItemFieldLabel,
-      loadOptions: this.loadItems.bind(this),
-      onPropertyChange: this.onListItemChange.bind(this),
-      selectedKey: this.properties.item,
-      // should be disabled if no list has been selected
-      disabled: !this.properties.listName
-    });
- 
+
     return {
       pages: [
         {
@@ -188,13 +141,13 @@ export default class HtmlSnippetSpfxWebPart extends BaseClientSideWebPart<IHtmlS
             {
               groupName: strings.BasicGroupName,
               groupFields: [
-                new PropertyPaneAsyncDropdown('listName', {
-                  label: strings.ListFieldLabel,
-                  loadOptions: this.loadLists.bind(this),
-                  onPropertyChange: this.onListChange.bind(this),
-                  selectedKey: this.properties.listName
-                }),
-                this.itemsDropDown
+                new PropertyPaneAsyncDropdown('item', {
+                  label: "Files",
+                  loadOptions: this.loadDocuments.bind(this),
+                  onPropertyChange: this.onListItemChange.bind(this),
+                  selectedKey: this.properties.item
+                })
+                
               ]
             }
           ]
@@ -206,7 +159,7 @@ export default class HtmlSnippetSpfxWebPart extends BaseClientSideWebPart<IHtmlS
 
   private nodeName(elem, name) {
     return elem.nodeName && elem.nodeName.toUpperCase() === name.toUpperCase();
-}
+  }
 
   private evalScript(elem) {
     const data = (elem.text || elem.textContent || elem.innerHTML || "");
@@ -236,8 +189,6 @@ export default class HtmlSnippetSpfxWebPart extends BaseClientSideWebPart<IHtmlS
 
 
 private async executeScript(element: HTMLElement) {
-
-
   if (this.context.pageContext && !window["_spPageContextInfo"]) {
     window["_spPageContextInfo"] = this.context.pageContext.legacyPageContext;
 }

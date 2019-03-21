@@ -33,7 +33,6 @@ export class PropertyPaneAsyncDropdown implements IPropertyPaneField<IPropertyPa
    if (!this.elem) {
      return;
    }
-
    this.onRender(this.elem);
  }
 
