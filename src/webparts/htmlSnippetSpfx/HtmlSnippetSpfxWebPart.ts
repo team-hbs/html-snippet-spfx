@@ -22,6 +22,7 @@ export interface IHtmlSnippetSpfxWebPartProps {
   listName: string;
   item: string;
   rawHtml: string;
+  title:string;
 }
 
 
@@ -36,7 +37,7 @@ export default class HtmlSnippetSpfxWebPart extends BaseClientSideWebPart<IHtmlS
   private getDocuments() : Promise<IDropdownOption[]> { 
     return new Promise<IDropdownOption[]>((resolve: (items: IDropdownOption[]) => void, reject: (err: string) => void): void => {
            let web = new Web(this.context.pageContext.web.absoluteUrl);
-           web.lists.getByTitle("Scriptsx").items.select(
+           web.lists.getByTitle("Scripts").items.select(
             "ID","FileRef").get().then((items) => {
                 let options:IDropdownOption[] = [];
                 for (let _i = 0;_i < items.length; _i++)
@@ -111,7 +112,8 @@ export default class HtmlSnippetSpfxWebPart extends BaseClientSideWebPart<IHtmlS
             listName: "Scripts",
             item: this.properties.item,
             context: this.context,
-            rawHtml: this.properties.rawHtml
+            rawHtml: this.properties.rawHtml,
+            title:this.properties.title
           }
         );
         this.domElement.innerHTML = this.properties.rawHtml;
@@ -135,19 +137,20 @@ export default class HtmlSnippetSpfxWebPart extends BaseClientSideWebPart<IHtmlS
       pages: [
         {
           header: {
-            description: strings.PropertyPaneDescription
+            description: "Select the file to embed from your Scripts library"
           },
           groups: [
             {
-              groupName: strings.BasicGroupName,
               groupFields: [
                 new PropertyPaneAsyncDropdown('item', {
                   label: "Files",
                   loadOptions: this.loadDocuments.bind(this),
                   onPropertyChange: this.onListItemChange.bind(this),
                   selectedKey: this.properties.item
+                }),
+                PropertyPaneTextField('title', {
+                  label: "Title"
                 })
-                
               ]
             }
           ]

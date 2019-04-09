@@ -41,14 +41,10 @@ export default class HtmlSnippetSpfx extends React.Component<IHtmlSnippetSpfxPro
     
     return (
       <div className={styles.htmlSnippetSpfx}>
+       <div className={ styles.webpartTitle }>{this.props.title}</div>
         <div className={styles.container}>
-          <div className={`ms-Grid-row ms-bgColor-themeDark ms-fontColor-white ${styles.row}`}>
-            
-             
+          <div className={`ms-Grid-row ${styles.row}`}>
               <span dangerouslySetInnerHTML={{ __html: this.props.rawHtml }}></span>
-              
-              
-          
           </div>
         </div>
       </div>

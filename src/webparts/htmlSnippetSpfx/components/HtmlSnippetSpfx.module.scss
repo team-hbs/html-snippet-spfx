@@ -9,8 +9,7 @@
 
   .row {
     @include ms-Grid-row;
-    @include ms-fontColor-white;
-    /*background-color: $ms-color-themeDark;*/
+    
     padding: 5px;
   }
 
@@ -70,5 +69,14 @@
       vertical-align: top;
       display: inline-block;
     }
+  }
+  .webpartTitle
+  {
+    font-size: 24px;
+    color: rgb(51, 51, 51);
+    font-weight: 100;
+    font-family: "Segoe UI", "Segoe UI Web (West European)", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding-bottom: 10px;
   }
 }

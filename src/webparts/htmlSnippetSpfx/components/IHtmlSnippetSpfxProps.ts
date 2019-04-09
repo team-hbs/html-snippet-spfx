@@ -6,4 +6,5 @@ export interface IHtmlSnippetSpfxProps {
   item: string;
   context: WebPartContext;
   rawHtml:string;
+  title:string;
 }
