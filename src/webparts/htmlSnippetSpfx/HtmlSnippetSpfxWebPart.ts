@@ -35,6 +35,7 @@ export default class HtmlSnippetSpfxWebPart extends BaseClientSideWebPart<IHtmlS
   }
 
   private getDocuments() : Promise<IDropdownOption[]> { 
+    console.log("GETTING DOCUMENTS");
     return new Promise<IDropdownOption[]>((resolve: (items: IDropdownOption[]) => void, reject: (err: string) => void): void => {
            let web = new Web(this.context.pageContext.web.absoluteUrl);
            web.lists.getByTitle("Scripts").items.select(
@@ -102,6 +103,7 @@ export default class HtmlSnippetSpfxWebPart extends BaseClientSideWebPart<IHtmlS
   }
 
   public render(): void {
+    console.log("RENDERING");
     let web = new Web(this.context.pageContext.web.absoluteUrl);
     web.getFileByServerRelativeUrl(this.properties.item).getText().then((text: string) => {
         this.properties.rawHtml = text;
